@@ -5,6 +5,8 @@
 # Section 4: Model-robust designs
 ## Section 4.3.3, 12 points, 3 factors, quadratic model
 
+source("obj-funs.R")
+source("coord-descent.R")
 
 f <- function(x) { c(1,x[1],x[2],x[3], x[2]*x[3], x[1]*x[3], x[1]*x[2], x[1]^2, x[2]^2, x[3]^2)}
 
