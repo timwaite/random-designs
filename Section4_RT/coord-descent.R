@@ -4,7 +4,7 @@
 
 # Co-ordinate descent algorithm used for Section 4 - model-robust designs
 
-coord.descent <- function(par, objfun, lower=rep(-1,length(par)), upper=rep(1,length(par)), tol=0.0001, ran.starts=0, verbose=F,...) {
+coord.descent <- function(par, objfun, lower=rep(-1,length(par)), upper=rep(1,length(par)), tol=0.0001, pass.max=20, verbose=F,...) {
   
   best <- Inf
   stop <- F
@@ -19,7 +19,7 @@ coord.descent <- function(par, objfun, lower=rep(-1,length(par)), upper=rep(1,le
   
   pass.ctr <- 1
   
-  while (!stop & pass.ctr<=20) {
+  while (!stop & pass.ctr<=pass.max) {
     cat("Pass ", pass.ctr, ", current objective ", ofcurr, "\n")
     for (i in 1:N) {
       objfuni <- function(xch) { x <- xnew; x[i] <- xch; objfun(x, ...) }

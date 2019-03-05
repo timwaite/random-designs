@@ -77,8 +77,4 @@ Psi.approx.wrap <- function(x, n, q, Tmc, f, A, sigma2.UB, Tmax, tau2, transform
   des1 <- design.raw(x,n,q, transform.delta)
   Psi.approx(des1$xi.bar, des1$delta, Tmc, f, A, sigma2.UB, Tmax, tau2)
 }
-
-Psi.approx.wrap2 <- function(x, n, q, delta=0.206, Tmc, f, A, sigma2.UB, Tmax, tau2) {
-  des1 <- design.raw(c(x,delta),n,q,  transform.delta=F)
-  Psi.approx(des1$xi.bar, des1$delta, Tmc, f, A, sigma2.UB, Tmax, tau2)  - log(des1$delta.max-des1$delta) 
-}
+ 
