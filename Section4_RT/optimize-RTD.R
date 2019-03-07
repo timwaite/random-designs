@@ -18,7 +18,7 @@
 # - A is the integral of f(x)f^T(x) over [-1,1]^q (needs to be specified by the user)
 # - n is the number of design points
 # - q is the number of factors (each assumed to take values in [-1,1])
-# - tau2 is the maximum L2-norm of the discrepancy function 
+# - tau2 is the maximum possible L2-norm of the discrepancy function 
 # - sigma2.UB is the upper bound on the random error variance
 # - Tmc is the Latin Hypercube Sample of possible translations (for the Monte Carlo integration) - defaults should be ok
 # - Tmax.init is the initial discretization of the translation (for maximization part) - defaults should be ok 
