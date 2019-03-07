@@ -8,7 +8,7 @@
 # Used in Section 4 of the paper
 #
 # The algorithm uses multiple random initializations of a co-ordinate descent algorithm to find an approximate minimax strategy. 
-# The objective function is evaluated as described in Section 4.3.1, using Monte Carlo integration for the first term
+# The objective function is evaluated as described in Section 4.3.1, using Monte Carlo integration for the first term of Equation (14) in the paper 
 #  and a discretized translation set to perform the maximization for the third term. 
 # A transformation is used to convert the problem into a box-constrained optimization. 
 # The discretized translation set is iteratatively refined using an approach similar to Pronzato and Walter (1987)
