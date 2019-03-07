@@ -4,7 +4,7 @@
 
 # Co-ordinate descent algorithm used for Section 4 - model-robust designs
 
-coord.descent <- function(par, objfun, lower=rep(-1,length(par)), upper=rep(1,length(par)), tol=0.0001, pass.max=20, verbose=F,...) {
+coord.descent <- function(par, objfun, lower=rep(-1,length(par)), upper=rep(1,length(par)), tol=0.0001, pass.max=100, verbose=T,...) {
   
   best <- Inf
   stop <- F
@@ -20,16 +20,16 @@ coord.descent <- function(par, objfun, lower=rep(-1,length(par)), upper=rep(1,le
   pass.ctr <- 1
   
   while (!stop & pass.ctr<=pass.max) {
-    cat("Pass ", pass.ctr, ", current objective ", ofcurr, "\n")
+    if (verbose) { cat("Pass ", pass.ctr, ", current objective ", ofcurr, "\n") }
     for (i in 1:N) {
       objfuni <- function(xch) { x <- xnew; x[i] <- xch; objfun(x, ...) }
       opt <- optimize(Vectorize(objfuni), lower=lower[i], upper=upper[i])
       if (verbose) { 
         #xs <- seq(from=0.95*opt$minimum,to=1.05*opt$minimum,len=100); 
-        xs <- seq(from=lower[i],to=upper[i],len=100); 
-        plot(xs, sapply(xs,objfuni),type="l", main=i, xlim=c(lower[i],upper[i]), ylim=c(0.5*opt$objective, 2*opt$objective)); 
-        abline(v=xnew[i]); 
-        abline(v=opt$minimum,lty=2)   
+        #xs <- seq(from=lower[i],to=upper[i],len=100); 
+        #plot(xs, sapply(xs,objfuni),type="l", main=i, xlim=c(lower[i],upper[i]), ylim=c(0*opt$objective, 2*opt$objective)); 
+        #abline(v=xnew[i]); 
+        #abline(v=opt$minimum,lty=2)   
       }
       if (opt$objective < objfun(xnew, ...)) { 
         xnew[i] <- opt$minimum

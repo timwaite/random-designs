@@ -67,14 +67,30 @@ Psi.approx <- function( xi.bar, delta,  Tmc, f, A, sigma2.UB, Tmax, tau2) {
 design.raw <- function(x, n, q, transform.delta=T ) {
   N <- length(x)
   if (N!= n*q+1) stop("Incorrect dimensions")
-  xi.bar <- matrix(x[-N], nrow=n, ncol=q, byrow=F)
-  delta.max <- min( dist(xi.bar,method="maximum"), 2*abs(xi.bar-1), 2*abs(xi.bar+1)  )
-  if (transform.delta) {	delta <- x[N] * delta.max } else {delta <- x[N]}
-  list(xi.bar = xi.bar, delta=delta, delta.max=delta.max)
+  ctilde <- matrix(x[-N], nrow=n, ncol=q, byrow=F)
+  dtilde <- x[N]
+  dmin <- min( dist(ctilde,method="maximum") )
+  delta <- 2* dtilde*dmin/( 2 + dmin* dtilde)
+  xi.bar <- ctilde * (1-delta/2)
+  list(xi.bar = xi.bar, delta=delta)
 }
 
 Psi.approx.wrap <- function(x, n, q, Tmc, f, A, sigma2.UB, Tmax, tau2, transform.delta=T) {
   des1 <- design.raw(x,n,q, transform.delta)
   Psi.approx(des1$xi.bar, des1$delta, Tmc, f, A, sigma2.UB, Tmax, tau2)
 }
+
+# design.rawOLD <- function(x, n, q, transform.delta=T ) {
+#   N <- length(x)
+#   if (N!= n*q+1) stop("Incorrect dimensions")
+#   xi.bar <- matrix(x[-N], nrow=n, ncol=q, byrow=F)
+#   delta.max <- min( dist(xi.bar,method="maximum"), 2*abs(xi.bar-1), 2*abs(xi.bar+1)  )
+#   if (transform.delta) {	delta <- x[N] * delta.max } else {delta <- x[N]}
+#   list(xi.bar = xi.bar, delta=delta, delta.max=delta.max)
+# }
+# 
+# Psi.approx.wrapOLD <- function(x, n, q, Tmc, f, A, sigma2.UB, Tmax, tau2, transform.delta=T) {
+#   des1 <- design.raw(x,n,q, transform.delta)
+#   Psi.approx(des1$xi.bar, des1$delta, Tmc, f, A, sigma2.UB, Tmax, tau2)
+# }
  

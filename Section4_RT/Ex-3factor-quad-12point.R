@@ -7,9 +7,13 @@
 
 source("obj-funs.R")
 source("coord-descent.R")
+source("optimize-RTD.R")
 
 f <- function(x) { c(1,x[1],x[2],x[3], x[2]*x[3], x[1]*x[3], x[1]*x[2], x[1]^2, x[2]^2, x[3]^2)}
 
+#
+# Caclulate A matrix
+#
 A <- matrix(0, ncol=10, nrow=10)
 
 indxs <- matrix( c(0,0,0,
@@ -33,6 +37,22 @@ for (i in 1:10) {
 
 library(MASS); fractions(A)
 
+# 
+# Find optimal strategy 
+# - it is time consuming to perform thorough search
+# - the below took around 70 min on a 2.5Ghz Macbook Pro
+
+tau2=2^3*1*0.05^2
+system.time( ans <- optimize.RTD(f=f, A=A, n=12, q=3, tau2=tau2, sigma2.UB=1, random.starts=20, verbose=T, pass.max=30, tol=1e-5) )
+#save(tau2,ans,"3factor-out.Rdata")
+
+#
+# Heuristic strategies
+# 
+# It is quicker to obtain an efficient heuristic strategy based on a V-optimal deterministic design
+#
+
+
 ####
 #
 # V-optimal deterministic design 
@@ -41,16 +61,15 @@ library(MASS); fractions(A)
 
 library(lhs)
 init <- c(2*randomLHS(n=12,k=3)-1)
-ans <- coord.descent(init, Vobfun, f=f, n=12, q=3, A=A)   # best value 3.9178, worth trying several repeats
-des <- data.frame(matrix(ans$xcurr,nrow=12,ncol=3))
+ansV <- coord.descent(init, Vobfun, f=f, n=12, q=3, A=A)   # best value 3.9178, worth trying several repeats
+des <- data.frame(matrix(ansV$xcurr,nrow=12,ncol=3))
 des <- round(des,digits=3) 
 des <- des[do.call(order,des),]
-plot(des)
-xtable((des),digits=3)  
+
 
 #
 # Set up heuristic xi.bar as described in text 
-# - N.B. - first check that points 6 & 7 of des are replicates
+# - N.B. - first check that rows 6 & 7 of des are replicates
 #
 
 clip <- function(x, delta=0.1) {
@@ -70,8 +89,10 @@ heur.des <- function(delta) {
 }
 
 
+Tmc <- 2*randomLHS(n=100, k=3)-1 
+Tmax <- rbind( 2*randomLHS(50,3)-1, as.matrix( expand.grid(c(-1,1), c(-1,1),c(-1,1)) ) )
+# NB inclusion of the corner points in Tmax stabilizes the results as the worst t is usually at one of these points
 
-Tmc <- 2*randomLHS(n=50, k=3)-1 -> Tmax
 tau2=2^3*1*0.05^2 # sd of psi at randomly selected point is 5% that of the random error sd
 
 #
@@ -81,20 +102,24 @@ tau2=2^3*1*0.05^2 # sd of psi at randomly selected point is 5% that of the rando
 
 PsiH <- function(delta) { Psi.approx( xi.bar=heur.des(delta), delta, Tmc, f, A, sigma2.UB=1, Tmax, tau2=tau2 ) } 
 optH <- optimize(Vectorize(PsiH), lower=0.05, upper=0.5)  
+optH
 plot(Vectorize(PsiH), from=0.01,to=0.5,type="l", ylim=c(0,5*optH$objective),xlim=c(0,0.5), ylab=expression(hat(Psi)(bar(xi)[delta],delta)), xlab=expression(delta))
+
+#
+# Use this as the initialization for a co-ordinate descent
+#
+
+delta <- optH$minimum
+xi.bar <- heur.des(delta)
+init <- c( xi.bar/(1-delta/2), delta/min(dist(xi.bar,method="maximum")) )
+design.raw(init, n=12,q=3)
+ans2 <- coord.descent( init, objfun=Psi.approx.wrap, lower=rep(c(-1,0), c(36,1)), upper=rep(1,37),  n=12, q=3, Tmc=Tmc, f=f, A=A, sigma2.UB=1, Tmax=Tmax, tau2=tau2  )
+
 
 #
 # how much bigger is the RMISPE due to presence of discrepancy?
 #
 sqrt( optH$objective/ min( ans$ofvals) )
-
-#
-# try to improve the heuristic design using coordinate descent, gives only a slightly better result
-#
-
-init <- design.raw(c(heur.des(optH$minimum), optH$minimum), n=12, q=3, transform.delta=F)
-init <- c(init$xi.bar, init$delta/init$delta.max)
-ans2 <- coord.descent(init, Psi.approx.wrap, lower=rep(c(-1, 0 ), c(36, 1)), upper=rep(c(1,1),c(36,1)),  n=12, q=3, Tmc=Tmc, f=f, A=A, sigma2.UB=1, Tmax=Tmc, tau2=tau2, tol=1e-4 )  # essentially makes no changes
 
 
 #
@@ -120,13 +145,13 @@ for (l in 1:1000) {
 }
 summary(Veffs)
 
-par(mfrow=c(1,3))
+par(mfrow=c(1,1))
 plot(Vectorize(PsiH), from=0.01,to=0.5,type="l", ylim=c(0,5*optH$objective),xlim=c(0,0.5), ylab=expression(hat(Psi)(bar(xi)[delta],delta)), xlab=expression(delta))
 abline(v=optH$minimum,lty=2)
-plot(heur.des(optH$minimum)[,c(1,2)],xlim=c(-1,1),ylim=c(-1,1), pch=19, xlab=expression(x[1]), ylab=expression(x[2]))
-abline(h=c(-1,1),v=c(-1,1),lty=2)
-boxplot(Veffs, xlab="V-efficiency distribution", ylim=c(0,1))
 
+
+
+boxplot(Veffs, xlab="V-efficiency distribution", ylim=c(0,1))
 
 
 
