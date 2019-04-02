@@ -3,8 +3,8 @@
 #	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)
 #
 # 
-#  Section 3: G-optimal random design examples
-#  One factor first-order model - Section 3.1.1
+#  Section 4: G-optimal random design examples
+#  One factor first-order model - Section 4.1.1
 
 # completely enumerate all possible three point designs over X= {-1,0,1}
 

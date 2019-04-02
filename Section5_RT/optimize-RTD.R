@@ -2,13 +2,13 @@
 #  Supporting material for "Minimax efficient random experimental designs, with application to 
 #	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)
 
-# Section 4: Main algorithm 
+# Section 5: Main algorithm 
 #
 # Algorithm to find minimax hypercuboidal random translation design strategy for an approximate linear model
-# Used in Section 4 of the paper
+# Used in Section 5 of the paper
 #
 # The algorithm uses multiple random initializations of a co-ordinate descent algorithm to find an approximate minimax strategy. 
-# The objective function is evaluated as described in Section 4.3.1, using Monte Carlo integration for the first term 
+# The objective function is evaluated as described in Section 5.3.1, using Monte Carlo integration for the first term 
 #  of equation (14) in the paper. A discretized translation set to perform the maximization for the third term. 
 # A transformation is used to convert the problem into a box-constrained optimization. 
 # The discretized translation set is iteratatively refined using an approach similar to Pronzato and Walter (1987)
@@ -43,11 +43,11 @@ optimize.RTD <- function(f, A, n, q, tau2, sigma2.UB=1, Tmc=(2*randomLHS(n=100,k
     for( m in 1:random.starts) {
         initial[[m]] <- c(2*randomLHS(n,q)-1,1)
     }
- 
+
+    # do multiple random starts and save the best 
     for (m in 1:length(initial)) {
       cat("Optimizing design strategy using co-ordinate descent, random initialization ", m, "/", random.starts, "\n")
       init.des <- initial[[m]]
-      # ideally do multiple random starts here and save the best 
       tmp <- coord.descent(init.des, Psi.approx.wrap, lower=rep(c(-1, 0 ), c(n*q, 1)), upper=rep(c(1,1),c(n*q,1)),  tol=tol, pass.max=pass.max, verbose=verbose,
                                n=n, q=q, Tmc=Tmc, f=f, A=A, sigma2.UB=sigma2.UB, Tmax=Tmax, tau2=tau2)
  

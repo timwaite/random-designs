@@ -2,8 +2,8 @@
 #  Supporting material for "Minimax efficient random experimental designs with application to 
 #	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)
 
-# Section 4: Model-robust designs
-## Section 4.3.3, 12 points, 3 factors, quadratic model
+# Section 5: Model-robust designs
+## Section 5.3.3, 12 points, 3 factors, quadratic model
 
 source("obj-funs.R")
 source("coord-descent.R")

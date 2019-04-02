@@ -3,7 +3,7 @@
 #	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)
 
 #
-#  Section 4 - model-robust designs
+#  Section 5 - model-robust designs
 #   - functions to compute the approximate risk bound hat(Psi) described in Section 4.3.1
 #	- also includes functions to implement the design reparameterization used to convert to box constraints
 

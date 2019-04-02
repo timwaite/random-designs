@@ -1,0 +1,1148 @@
+Ls <- matrix(NA, ncol=9,nrow=10000 )#
+for (x.ind in 1:9) {#
+	for (j in 1:10000) {#
+		Ls[j,i] <- realizedLoss(designs[1,],x.ind)#
+ 	}#
+ }
+apply(Ls, 2, function(x) {plot(density(x))})
+Ls
+debug(realizedLoss)#
+Ls <- matrix(NA, ncol=9,nrow=10000 )#
+for (i in 1:9) {#
+	for (j in 1:10000) {#
+		Ls[j,i] <- realizedLoss(designs[1,],i)#
+ 	}#
+ }
+c
+Q
+undebug(realizedLoss)
+Ls <- matrix(NA, ncol=9,nrow=10000 )#
+for (i in 1:9) {#
+	for (j in 1:10000) {#
+		Ls[j,i] <- realizedLoss(designs[1,],i)#
+ 	}#
+ }
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls[,i]))#
+}
+loss_dists <- function(strategy) {#
+	Ls <- matrix(NA, ncol=9,nrow=10000 )#
+	for (i in 1:9) {#
+		for (j in 1:10000) {#
+			which.des <- sample(1:nrow(designs), size=1,  prob=strategy)#
+			Ls[j,i] <- realizedLoss(designs[which.des,],i)#
+ 		}#
+ } #
+}
+bestdes <- which.min(apply(Lmat,1,max))
+bestdes
+##
+#  Supporting material for "Minimax efficient random experimental designs, with application to #
+#	model-robust design for prediction" by T.W. Waite and D.C. Woods (2018)#
+##
+#  Section 4: G-optimal random design examples#
+#  Two factor quadratic model - Section 4.1.3#
+des_sp <- as.matrix(expand.grid(c(-1,0,1),c(-1,0,1)))#
+#
+designs <- t(combn(1:9, 6))#
+designs <- designs[-c( 1, 20, 24, 29, 43, 63, 69, 84),]  #exclude designs that later turn out to be singular#
+#
+# information matrix for a design defined by indices#
+M <- function(design,des_sp) {#
+	Xmat <- des_sp[as.vector(design),]#
+	Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+	colnames(Fmat) <- NULL#
+	return(t(Fmat)%*%Fmat)#
+}#
+#
+M(designs[1,],des_sp)#
+#
+EL <- function(design,x,des_sp) {#
+	fx<-c(1,x,x[1]*x[2],x[1]^2, x[2]^2)#
+	tmp <- try(solve(M(design,des_sp),fx),silent=TRUE)#
+	if(class(tmp)!="try-error") return(	t(fx)%*%tmp)#
+	else return(Inf)#
+}#
+#
+EL(designs[80,], c(0,0), des_sp)#
+Lmat <- matrix(nrow=nrow(designs),ncol=nrow(des_sp))#
+#
+for(i in 1:nrow(designs)) {#
+	for(j in 1:nrow(des_sp)) {#
+		Lmat[i,j] <- EL(designs[i,],des_sp[j,],des_sp)#
+	}#
+}#
+min(apply(Lmat,1,max))#
+bestdes <- which.min(apply(Lmat,1,max))#
+# optimal deterministic design - max exptected loss = 2.75#
+#
+library(lpSolveAPI)#
+#
+A <- t(Lmat)#
+my.lp2 <- make.lp( nrow=nrow(A), ncol=ncol(A) )#
+lp.control(my.lp2,sense="max")   # make it a maximization problem#
+for(i in 1:ncol(A)) set.column(my.lp2,i,A[,i])  #
+set.objfn(my.lp2, rep(1,ncol(A)))#
+set.constr.type(my.lp2,rep("<=",nrow(A)))#
+set.rhs(my.lp2, rep(1, nrow(A)))#
+solve(my.lp2)#
+get.objective(my.lp2)#
+optq <- get.variables(my.lp2)#
+optq <- optq/sum(optq)#
+max(optq%*%Lmat)#
+# plot the random design#
+#
+sptdes <- which(optq>0)#
+par(mfrow=c(3,3))#
+for(i in 1:length(sptdes)) {#
+	main <- substitute(pi(xi[i])==main,list(i=i,main=round(optq[sptdes[i]],4)))#
+	#main <- paste(round(optq[sptdes[i]],4))#
+	plot( des_sp[designs[sptdes[i],],] ,xlim=c(-1,1),ylim=c(-1,1),#
+		main=main,pch=19, xlab=expression(x[1]),ylab=expression(x[2]))#
+}#
+plot( des_sp[designs[bestdes,],] ,xlim=c(-1,1),ylim=c(-1,1), pch=19, main="best deterministic",xlab=expression(x[1]),ylab=expression(x[2]))#
+# model: full quadratic in 2 factors: p=6, n=6 i.e. smallest possible number of runs#
+# #
+# optimal deterministic design - max expected loss = 2.75#
+# optimal randomized design contains 8 support designs (with odd looking weights)#
+# max expected loss is 1.55#
+apply(Lmat[which(optq>0),],1,max) # are the support designs optimal deterministic designs?#
+# half are, half aren't#
+# new stuff ?#
+realizedLoss <- function(design, x.ind, theta=c(1,1,1,1,1,1), s2=1) {#
+	Xmat <- des_sp[as.vector(design),]#
+	x <- des_sp[x.ind,]#
+	Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+	y <- rnorm(n=length(design), mean=Fmat %*% theta, sd=sqrt(s2))#
+	thetahat <- solve(t(Fmat)%*%Fmat, Fmat %*% y )#
+	L <-  (  c(1, x, x[1]*x[2], x[1]^2, x[2]^2) %*% (thetahat-theta)  )^2#
+ 	return(L)#
+}#
+#
+loss_dists <- function(strategy) {#
+	Ls <- matrix(NA, ncol=9,nrow=10000 )#
+	for (i in 1:9) {#
+		for (j in 1:10000) {#
+			which.des <- sample(1:nrow(designs), size=1,  prob=strategy)#
+			Ls[j,i] <- realizedLoss(designs[which.des,],i)#
+ 		}#
+ } #
+  return(Ls)#
+}#
+Ls1 <- loss_dists(optq)#
+delta8 <- rep(0,length=nrow(designs)); delta[8] <- 1#
+Ls2 <- loss_dists(delta8)#
+#
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=2)#
+	lines(density(Ls2[,i]), col=4)#
+}
+loss_dists <- function(strategy) {#
+	Ls <- matrix(NA, ncol=9,nrow=10000 )#
+	for (i in 1:9) {#
+		for (j in 1:10000) {#
+			which.des <- sample(1:nrow(designs), size=1, replace=T,  prob=strategy)#
+			Ls[j,i] <- realizedLoss(designs[which.des,],i)#
+ 		}#
+ } #
+  return(Ls)#
+}#
+Ls1 <- loss_dists(optq)#
+delta8 <- rep(0,length=nrow(designs)); delta[8] <- 1#
+Ls2 <- loss_dists(delta8)
+sum(delta8)
+delta8 <- rep(0,length=nrow(designs))
+detla
+delta
+delta8
+delta[8] <- 1
+delta8 <- rep(0,length=nrow(designs)); delta8[8] <- 1#
+Ls2 <- loss_dists(delta8)
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=2)#
+	lines(density(Ls2[,i]), col=4)#
+}
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=2, xlim=c(0,2500))#
+	lines(density(Ls2[,i]), col=4)#
+}
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=2, xlim=c(0,2500), ylim=c(0,0.1))#
+	lines(density(Ls2[,i]), col=4)#
+}
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=2, xlim=c(0,2500), ylim=c(0,0.2))#
+	lines(density(Ls2[,i]), col=4)#
+}
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=1, xlim=c(0,2500), ylim=c(0,0.2))#
+	lines(density(Ls2[,i]), col=4)#
+}
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=2, xlim=c(0,2500), ylim=c(0,0.2))#
+	lines(density(Ls2[,i]), col=4)#
+}
+apply(Ls1,2,mean)
+apply(Ls2,2,mean)
+max(apply(Ls2,2,mean))
+max(apply(Ls1,2,mean))
+L
+Lmat
+apply(Lmat,1,max)
+which.min(apply(Lmat,1,max))
+debug(realizedlLoss)
+debug(realizedLoss)
+loss_dists(optq)
+design
+Xmat
+x
+Fmat
+theta
+Fmat%*%theta
+thetahat
+L
+q
+Q
+undebug(realizedLoss)
+debug(loss_dists)
+Ls1 <- loss_dists(optq)
+which.des
+designs
+strategy
+sum(strategy)
+which.des
+realizedLoss(which.des,i)
+which.des
+designs[which.des,]
+designs[41,]
+realizedLoss(designs[which.des,],i)
+Ls[j,i] <- realizedLoss(designs[which.des,],i)
+realizedLoss(designs[which.des,],i)
+q
+Q
+undebug(loss_dists)
+Ls1 <- loss_dists(optq)#
+delta8 <- rep(0,length=nrow(designs)); delta8[8] <- 1#
+Ls2 <- loss_dists(delta8)#
+#
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=2, xlim=c(0,2500), ylim=c(0,0.2))#
+	lines(density(Ls2[,i]), col=4)#
+}
+apply(Ls1,summary)
+apply(Ls1,2,summary)
+apply(Ls1,2,median)
+apply(Ls2,2,median)
+EL(designs[80,], c(0,0), des_sp)
+Lmat
+designs
+EL(designs[76,], c(0,0), des_sp)
+designs
+ncol(designs)
+realizedLoss <- function(design, x.ind, theta=c(1,1,1,1,1,1), s2=1) {#
+	Xmat <- des_sp[as.vector(design),]#
+	x <- des_sp[x.ind,]#
+	Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+	f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+	L <- rchisq(1,1) * s2 * t(f)%*%solve(t(Fmat)%*%Fmat %*%f #
+	return(L)#
+}
+realizedLoss <- function(design, x.ind, theta=c(1,1,1,1,1,1), s2=1) {#
+	Xmat <- des_sp[as.vector(design),]#
+	x <- des_sp[x.ind,]#
+	Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+	f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+	L <- rchisq(1,1) * s2 * t(f)%*%solve(t(Fmat)%*%Fmat) %*%f #
+	return(L)#
+}
+realizedLoss <- function(design, x.ind, theta=c(1,1,1,1,1,1), s2=1) {#
+	Xmat <- des_sp[as.vector(design),]#
+	x <- des_sp[x.ind,]#
+	Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+	f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+	L <- rchisq(1,1) * s2 * t(f)%*%solve(t(Fmat)%*%Fmat) %*%f #
+	return(L)#
+}#
+#
+loss_dists <- function(strategy) {#
+	Ls <- matrix(NA, ncol=9,nrow=10000 )#
+	for (i in 1:9) {#
+		for (j in 1:10000) {#
+			which.des <- sample(1:nrow(designs), size=1, replace=T,  prob=strategy)#
+			Ls[j,i] <- realizedLoss(designs[which.des,],i)#
+ 		}#
+ } #
+  return(Ls)#
+}
+realizedLoss <- function(design, x.ind, theta=c(1,1,1,1,1,1), s2=1) {#
+	Xmat <- des_sp[as.vector(design),]#
+	x <- des_sp[x.ind,]#
+	Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+	f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+	L <- rchisq(1,1) * s2 * t(f)%*%solve(t(Fmat)%*%Fmat) %*%f #
+	return(L)#
+}#
+#
+loss_dists <- function(strategy) {#
+	Ls <- matrix(NA, ncol=9,nrow=10000 )#
+	for (i in 1:9) {#
+		for (j in 1:10000) {#
+			which.des <- sample(1:nrow(designs), size=1, replace=T,  prob=strategy)#
+			Ls[j,i] <- realizedLoss(designs[which.des,],i)#
+ 		}#
+ } #
+  return(Ls)#
+}#
+loss_dists(optq)
+Ls1 <- loss_dists(optq)
+plot(rchisq(100000,1))
+plot(density(rchisq(100000,1)))
+realizedLoss <- function(design, x.ind, theta=c(1,1,1,1,1,1), s2=1) {#
+	Xmat <- des_sp[as.vector(design),]#
+	x <- des_sp[x.ind,]#
+	Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+	f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+	L <- rchisq(1,1) * s2 * t(f)%*%solve(t(Fmat)%*%Fmat) %*%f #
+	return(L)#
+}#
+#
+loss_dists <- function(strategy) {#
+	Ls <- matrix(NA, ncol=9,nrow=10000 )#
+	for (i in 1:9) {#
+		for (j in 1:10000) {#
+			which.des <- sample(1:nrow(designs), size=1, replace=T,  prob=strategy)#
+			Ls[j,i] <- realizedLoss(designs[which.des,],i)#
+ 		}#
+ } #
+  return(Ls)#
+}#
+loss_dists(optq)#
+#
+Ls1 <- loss_dists(optq)#
+delta8 <- rep(0,length=nrow(designs)); delta8[8] <- 1#
+Ls2 <- loss_dists(delta8)
+ar(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=2, xlim=c(0,2500), ylim=c(0,0.2))#
+	lines(density(Ls2[,i]), col=4)#
+}
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=2, xlim=c(0,2500), ylim=c(0,0.2))#
+	lines(density(Ls2[,i]), col=4)#
+}
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=2)#
+	lines(density(Ls2[,i]), col=4)#
+}
+LMat
+Lmat
+Lmat[8,]
+apply(Ls2,2,mean)
+apply(Ls1,2,mean)
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=2, xlim=c(0,max(Ls1,Ls2)))#
+	lines(density(Ls2[,i]), col=4)#
+}
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(log(Ls1[,i])), col=2, xlim=range(log(c(Ls1,Ls2))))#
+	lines(density(log(Ls2[,i])), col=4)#
+}
+apply(Ls1,2,summary)
+apply(Ls2,2,summary)
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(log(Ls1[,i])), col=2, xlim=range(log(c(Ls1,Ls2))))#
+	lines(density(log(Ls2[,i])), col=4)#
+}
+apply(Ls1,2,mean)
+apply(Ls2,2,mean)
+par(mfrow=c(3,3))#
+for(i in 1:9) {#
+	plot(density(Ls1[,i]), col=2,  )#
+	lines(density( Ls2[,i]) , col=4)#
+}
+plot(density(Ls[3,]))
+plot(density(Ls[,3])) ; lines(density(Ls[,5]))
+plot(density(Ls1[,3]),col=2) ; lines(density(Ls2[,5]),col=4)
+par()
+plot(density(Ls1[,3]),col=2) ; lines(density(Ls2[,5]),col=4)
+par(mfrow=c(1,1))
+plot(density(Ls1[,3]),col=2) ; lines(density(Ls2[,5]),col=4)
+lossdist <- function(strategy, x.ind, grid){#
+	den <- rep(0, length=length(grid))#
+	for(j in 1:nrow(designs)){	#
+		Xmat <- des_sp[as.vector(design),]#
+		x <- des_sp[x.ind,]#
+		Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+		f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+		den <- den + strategy[j] * t(f)%*% solve(t(Fmat)%*% Fmat) %*% f * dchisq(den, 1) #
+	}#
+}
+lossdist(optq, 1, grid=seq(from=0,to=100,by=0.1))
+lossdist <- function(strategy, x.ind, grid){#
+	den <- rep(0, length=length(grid))#
+	for(j in 1:nrow(designs)){	#
+		Xmat <- des_sp[as.vector(designs[j,]),]#
+		x <- des_sp[x.ind,]#
+		Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+		f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+		den <- den + strategy[j] * t(f)%*% solve(t(Fmat)%*% Fmat) %*% f * dchisq(den, 1) #
+	}#
+}#
+lossdist(optq, 1, grid=seq(from=0,to=100,by=0.1))
+warnings()
+debug(lossdist)
+lossdist(optq, 1, grid=seq(from=0,to=100,by=0.1))
+designs[j,]
+Xmat
+x
+Fmat
+f
+lossdist(optq, 1, grid=seq(from=0,to=100,by=0.1))
+c(1, x, x[1] * x[2], x[1]^2, x[2]^2)
+den
+startegy[j]
+strategy[j]
+t(f) %*% solve(t(Fmat) %*% Fmat) %*% #
+    f
+dchisq(den, 1)
+dchisq(grid, 1)
+q
+\Q
+Q
+lossdist <- function(strategy, x.ind, grid){#
+	den <- rep(0, length=length(grid))#
+	for(j in 1:nrow(designs)){	#
+		Xmat <- des_sp[as.vector(designs[j,]),]#
+		x <- des_sp[x.ind,]#
+		Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+		f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+		den <- den + strategy[j] * t(f)%*% solve(t(Fmat)%*% Fmat) %*% f * dchisq(grid, 1) #
+	}#
+}#
+lossdist(optq, 1, grid=seq(from=0,to=100,by=0.1))
+warnings()
+lossdist <- function(strategy, x.ind, grid){#
+	den <- rep(0, length=length(grid))#
+	for(j in 1:nrow(designs)){	#
+		Xmat <- des_sp[as.vector(designs[j,]),]#
+		x <- des_sp[x.ind,]#
+		Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+		f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+		den <- den + rep(strategy[j],length(grid)) * t(f)%*% solve(t(Fmat)%*% Fmat) %*% f * dchisq(grid, 1) #
+	}#
+}
+lossdist(optq, 1, grid=seq(from=0,to=100,by=0.1))
+warnings()
+lossdist <- function(strategy, x.ind, grid){#
+	den <- rep(0, length=length(grid))#
+	for(j in 1:nrow(designs)){	#
+		Xmat <- des_sp[as.vector(designs[j,]),]#
+		x <- des_sp[x.ind,]#
+		Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+		f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+		den <- den + rep(strategy[j],length=length(grid)) * t(f)%*% solve(t(Fmat)%*% Fmat) %*% f * dchisq(grid, 1) #
+	}#
+}#
+lossdist(optq, 1, grid=seq(from=0,to=100,by=0.1))
+warnings()
+lossdist <- function(strategy, x.ind, grid){#
+	den <- rep(0, length=length(grid))#
+	for(j in 1:nrow(designs)){	#
+		Xmat <- des_sp[as.vector(designs[j,]),]#
+		x <- des_sp[x.ind,]#
+		Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+		f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+		den <- den + rep(strategy[j]*t(f)%*% solve(t(Fmat)%*% Fmat) %*% f,length=length(grid)) *  * dchisq(grid, 1) #
+	}#
+}#
+lossdist(optq, 1, grid=seq(from=0,to=100,by=0.1))
+lossdist <- function(strategy, x.ind, grid){#
+	den <- rep(0, length=length(grid))#
+	for(j in 1:nrow(designs)){	#
+		Xmat <- des_sp[as.vector(designs[j,]),]#
+		x <- des_sp[x.ind,]#
+		Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+		f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+		den <- den + rep( strategy[j]*t(f)%*% solve(t(Fmat)%*% Fmat) %*% f, length=length(grid)) *  * dchisq(grid, 1) #
+	}#
+}
+lossdist <- function(strategy, x.ind, grid){#
+	den <- rep(0, length=length(grid))#
+	for(j in 1:nrow(designs)){	#
+		Xmat <- des_sp[as.vector(designs[j,]),]#
+		x <- des_sp[x.ind,]#
+		Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+		f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+		den <- den + rep( strategy[j]*t(f)%*% solve(t(Fmat)%*% Fmat) %*% f, length=length(grid)) *  dchisq(grid, 1) #
+	}#
+}#
+lossdist(optq, 1, grid=seq(from=0,to=100,by=0.1))
+lossdist <- function(strategy, x.ind, grid){#
+	den <- rep(0, length=length(grid))#
+	for(j in 1:nrow(designs)){	#
+		Xmat <- des_sp[as.vector(designs[j,]),]#
+		x <- des_sp[x.ind,]#
+		Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+		f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+		den <- den + rep( strategy[j]*t(f)%*% solve(t(Fmat)%*% Fmat) %*% f, length=length(grid)) *  dchisq(grid, 1) #
+	}#
+	return(den)#
+}#
+lossdist(optq, 1, grid=seq(from=0,to=100,by=0.1))
+plot(xs, lossdist(optq, 1, grid=xs),type="l")
+xs<-seq(from=0,to=10,by=0.1)#
+plot(xs, lossdist(optq, 1, grid=xs),type="l")
+xs<-seq(from=0,to=100,by=0.1)
+plot(xs, lossdist(optq, 1, grid=xs),type="l")
+apply(Ls1, 2,quantile); apply(Ls2,2,quantile)
+par(mfrow=c(1,1))#
+plot(density(Ls1[,3]),col=2) ; lines(density(Ls2[,5]),col=4)#
+#
+apply(Ls1,2,mean); apply(Ls2,2,mean)#
+#
+apply(Ls1, 2,quantile); apply(Ls2,2,quantile)
+round(apply(Ls1, 2,quantile),digits=3); apply(Ls2,2,quantile)
+round(apply(Ls1, 2,quantile),digits=3); round(apply(Ls2,2,quantile),digits=3)
+##
+#  Supporting material for "Minimax efficient random experimental designs, with application to #
+#	model-robust design for prediction" by T.W. Waite and D.C. Woods (2018)#
+##
+#  Section 4: G-optimal random design examples#
+#  Two factor quadratic model - Section 4.1.3#
+des_sp <- as.matrix(expand.grid(c(-1,0,1),c(-1,0,1)))#
+#
+designs <- t(combn(1:9, 6))#
+designs <- designs[-c( 1, 20, 24, 29, 43, 63, 69, 84),]  #exclude designs that later turn out to be singular#
+#
+# information matrix for a design defined by indices#
+M <- function(design,des_sp) {#
+	Xmat <- des_sp[as.vector(design),]#
+	Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+	colnames(Fmat) <- NULL#
+	return(t(Fmat)%*%Fmat)#
+}#
+#
+M(designs[1,],des_sp)#
+#
+EL <- function(design,x,des_sp) {#
+	fx<-c(1,x,x[1]*x[2],x[1]^2, x[2]^2)#
+	tmp <- try(solve(M(design,des_sp),fx),silent=TRUE)#
+	if(class(tmp)!="try-error") return(	t(fx)%*%tmp)#
+	else return(Inf)#
+}#
+#
+EL(designs[76,], c(0,0), des_sp)#
+Lmat <- matrix(nrow=nrow(designs),ncol=nrow(des_sp))#
+#
+for(i in 1:nrow(designs)) {#
+	for(j in 1:nrow(des_sp)) {#
+		Lmat[i,j] <- EL(designs[i,],des_sp[j,],des_sp)#
+	}#
+}#
+min(apply(Lmat,1,max))#
+bestdes <- which.min(apply(Lmat,1,max))#
+# optimal deterministic design - max exptected loss = 2.75#
+#
+library(lpSolveAPI)#
+#
+A <- t(Lmat)#
+my.lp2 <- make.lp( nrow=nrow(A), ncol=ncol(A) )#
+lp.control(my.lp2,sense="max")   # make it a maximization problem#
+for(i in 1:ncol(A)) set.column(my.lp2,i,A[,i])  #
+set.objfn(my.lp2, rep(1,ncol(A)))#
+set.constr.type(my.lp2,rep("<=",nrow(A)))#
+set.rhs(my.lp2, rep(1, nrow(A)))#
+solve(my.lp2)#
+get.objective(my.lp2)#
+optq <- get.variables(my.lp2)#
+optq <- optq/sum(optq)#
+max(optq%*%Lmat)#
+# plot the random design#
+#
+sptdes <- which(optq>0)#
+par(mfrow=c(3,3))#
+for(i in 1:length(sptdes)) {#
+	main <- substitute(pi(xi[i])==main,list(i=i,main=round(optq[sptdes[i]],4)))#
+	#main <- paste(round(optq[sptdes[i]],4))#
+	plot( des_sp[designs[sptdes[i],],] ,xlim=c(-1,1),ylim=c(-1,1),#
+		main=main,pch=19, xlab=expression(x[1]),ylab=expression(x[2]))#
+}#
+plot( des_sp[designs[bestdes,],] ,xlim=c(-1,1),ylim=c(-1,1), pch=19, main="best deterministic",xlab=expression(x[1]),ylab=expression(x[2]))#
+# model: full quadratic in 2 factors: p=6, n=6 i.e. smallest possible number of runs#
+# #
+# optimal deterministic design - max expected loss = 2.75#
+# optimal randomized design contains 8 support designs (with odd looking weights)#
+# max expected loss is 1.55#
+apply(Lmat[which(optq>0),],1,max) # are the support designs optimal deterministic designs?#
+# half are, half aren't#
+# new stuff 9/11/18#
+# - try to plot loss distributions at different x-values for different strategies?#
+#
+realizedLoss <- function(design, x.ind, theta=c(1,1,1,1,1,1), s2=1) {#
+	Xmat <- des_sp[as.vector(design),]#
+	x <- des_sp[x.ind,]#
+	Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+	f <- c(1, x, x[1]*x[2], x[1]^2, x[2]^2)#
+	L <- rnorm(1) * sqrt( s2 * t(f)%*%solve(t(Fmat)%*%Fmat) %*%f )#
+	return(L)#
+}#
+#
+loss_dists <- function(strategy) {#
+	Ls <- matrix(NA, ncol=nrow(des_sp),nrow=50000 )#
+	for (i in 1:9) {#
+		for (j in 1:50000) {#
+			which.des <- sample(1:nrow(designs), size=1, replace=T,  prob=strategy)#
+			Ls[j,i] <- realizedLoss(designs[which.des,],i)#
+ 		}#
+ } #
+  return(Ls)#
+}#
+#
+Ls1 <- loss_dists(optq)#
+delta <- function(i) { out <- rep(0,length=nrow(designs)); out[i] <-1; return(out) } #
+delta8 <- delta(8)#
+Ls2 <- loss_dists(delta8)#
+#
+par(mfrow=c(1,2))#
+#
+plot(density(Ls2[,2]),col=4, main="Distribution of prediction error, deterministic design", xlim=c(-10,10))#
+for(i in 2:9){#
+	lines(density(Ls2[,i]), col=4,)#
+}#
+plot(density(Ls1[,1]), col=2, main="Distribution of prediction error, random design",xlim=c(-10,10))#
+for(i in 1:9) {#
+	lines(density(Ls1[,i]),col=2)#
+	}#
+apply(Ls1,2,sd)#
+apply(Ls2,2,sd)#
+printdes <- function(strategy) { #
+		for( i in 1:nrow(designs)) { #
+				if(strategy[i]>0) { #
+					cat("", round(strategy[i],3), "\t")#
+					des <- des_sp[designs[i,],] #
+					for(j in 1:nrow(des)) {#
+					   cat("(",paste(des[j,], collapse=","),") ", sep="")	#
+					}#
+					cat("\n")#
+				} #
+		}#
+}#
+printdes(optq)#
+# new stuff 4/12/18#
+#
+# what is the distribution of theta^ast (xi) (i.e. the worst theta)?#
+#
+theta.asts= apply( Lmat[optq>0,], 1, which.max)#
+theta.ast.dist <- aggregate(optq[optq>0], by=list(theta.asts), FUN=sum)#
+max(theta.ast.dist[,2])#
+# for a given theta, compute the  probability that we choose #
+# a design for which theta maximizes the conditional expected loss#
+#
+prob.theta.maximizes.EL <- function(theta) {#
+	does.theta.maximize.EL <- Lmat[ , theta ] == apply(Lmat,1 ,max)#
+	sum(optq[does.theta.maximize.EL])#
+}#
+sapply( 1:9, prob.theta.maximizes.EL)#
+#
+# upper bound on the probability that the worst case conditional expected loss is attained#
+max(sapply( 1:9, prob.theta.maximizes.EL))#
+# worst-case loss distributions (cdfs?)#
+#
+loss.cdf <- function(l,design.prob=optq,x.ind=1,s2=1) {#
+	ans <- 0#
+	for (i in 1:nrow(designs)) {#
+			x <- des_sp[x.ind,]#
+			f <- c(1,x,x[1]*x[2], x[1]^2, x[2]^2)#
+			predsd <- s2* (1+ t(f)%*% solve(M(designs[i,],des_sp)) %*% f)#
+			term <- pnorm(sqrt(l), mean=0, sd= predsd ) - pnorm(-sqrt(l),mean=0,sd=predsd)#
+			ans <- ans + design.prob[i] * term#
+	}#
+	return(ans)#
+}#
+loss.cdf(1,optq,1,1)#
+#
+wc.loss.cdf <- function(l,design.prob=optq,s2=1) {#
+	vals<- rep(NA,nrow(des_sp))#
+	for (i in 1:nrow(des_sp)) {#
+		vals[i] <- loss.cdf(l,design.prob,i,s2)#
+	}#
+	min(vals)#
+ }#
+# plotting grid#
+lgrid <- exp(seq(from=log(0.01),to=log(70),length=500))#
+#
+#loss distribution for optimal random strategy #
+formals(wc.loss.cdf)$design.prob = optq#
+opt.rds.loss.cdf <- sapply(lgrid, Vectorize(wc.loss.cdf))#
+# loss distribution for minimax deterministic#
+formals(wc.loss.cdf)$design.prob= delta(8)#
+mm.det.loss.cdf <- sapply(lgrid, Vectorize(wc.loss.cdf))#
+plot(sqrt(lgrid), opt.rds.loss.cdf, type="l", ylab="Pre-experimental P( |pred err| <= u )   [g.l.b]", xlab=expression(u/sigma))#
+lines(sqrt(lgrid),mm.det.loss.cdf, type="l",col=4)#
+legend("bottomright", legend=c("random design strategy", "minimax deterministic"), lty=c(1,1), col=c(1,4))#
+#
+# for the optimal random design strategy, the median absolute prediction error is at worst 1.66 standard deviations#
+# for minimax deterministic design, the median absolute prediction error is at worst 2.55 standard deviations
+Lmat
+optq%*%Lmat
+Lmat[bestdes,]
+?make.lp
+A <- t(Lmat)#
+my.lp3 <- make.lp( nrow=nrow(A), ncol=ncol(A) )#
+lp.control(my.lp3,sense="max")   # make it a maximization problem#
+for(i in 1:ncol(A)) set.column(my.lp3,i,A[,i])  #
+set.objfn(my.lp3, rep(1,ncol(A)))#
+set.constr.type(my.lp3,rep("<=",nrow(A)))#
+set.rhs(my.lp3, Lmat[bestdes,])#
+solve(my.lp3)
+get.objective(my.lp3)
+get.variables(my.lp3)
+get.objective(my.lp3)
+A <- t(Lmat)#
+my.lp3 <- make.lp( nrow=nrow(A), ncol=ncol(A) )#
+lp.control(my.lp3,sense="max")   # make it a maximization problem#
+for(i in 1:ncol(A)) set.column(my.lp3,i,A[,i])  #
+set.objfn(my.lp3, 0.99*rep(1,ncol(A)))#
+set.constr.type(my.lp3,rep("<=",nrow(A)))#
+set.rhs(my.lp3, Lmat[bestdes,])#
+solve(my.lp3)#
+get.objective(my.lp3)#
+get.variables(my.lp3)
+A <- t(Lmat)#
+my.lp3 <- make.lp( nrow=nrow(A), ncol=ncol(A) )#
+lp.control(my.lp3,sense="max")   # make it a maximization problem#
+for(i in 1:ncol(A)) set.column(my.lp3,i,A[,i])  #
+set.objfn(my.lp3, 0.5*rep(1,ncol(A)))#
+set.constr.type(my.lp3,rep("<=",nrow(A)))#
+set.rhs(my.lp3, Lmat[bestdes,])#
+solve(my.lp3)#
+get.objective(my.lp3)#
+get.variables(my.lp3)
+Lmat[bestdes,]
+A <- t(Lmat)#
+my.lp3 <- make.lp( nrow=nrow(A), ncol=ncol(A) )#
+lp.control(my.lp3,sense="max")   # make it a maximization problem#
+for(i in 1:ncol(A)) set.column(my.lp3,i,A[,i])  #
+set.objfn(my.lp3, rep(1,ncol(A)))#
+set.constr.type(my.lp3,rep("<=",nrow(A)))#
+set.rhs(my.lp3, 0.9*Lmat[bestdes,])#
+solve(my.lp3)#
+get.objective(my.lp3)#
+get.variables(my.lp3)
+A <- t(Lmat)#
+my.lp3 <- make.lp( nrow=nrow(A), ncol=ncol(A) )#
+lp.control(my.lp3,sense="max")   # make it a maximization problem#
+for(i in 1:ncol(A)) set.column(my.lp3,i,A[,i])  #
+set.objfn(my.lp3, rep(1,ncol(A)))#
+set.constr.type(my.lp3,rep("<=",nrow(A)))#
+set.rhs(my.lp3, 0.99*Lmat[bestdes,])#
+solve(my.lp3)#
+get.objective(my.lp3)#
+get.variables(my.lp3)
+A <- t(Lmat)#
+my.lp3 <- make.lp( nrow=nrow(A)+1, ncol=ncol(A) )#
+lp.control(my.lp3,sense="max")   # make it a maximization problem#
+for(i in 1:nrow(A)) set.row(my.lp3,i,A[i,])  #
+set.row(my.lp3,nrow(A)+1, rep(1,ncol(A)))#
+set.constr.type(my.lp3,rep("<=",nrow(A)+1))#
+set.rhs(my.lp3, c(Lmat[bestdes,],1))#
+set.objfn(my.lp3, runif(nrow(A)+1))#
+solve(my.lp3)
+A
+Lmat%*%optq
+des_sp <- as.matrix(expand.grid(c(-1,0,1),c(-1,0,1)))#
+#
+designs <- t(combn(1:9, 6))#
+designs <- designs[-c( 1, 20, 24, 29, 43, 63, 69, 84),]  #exclude designs that later turn out to be singular#
+#
+# information matrix for a design defined by indices#
+M <- function(design,des_sp) {#
+	Xmat <- des_sp[as.vector(design),]#
+	Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+	colnames(Fmat) <- NULL#
+	return(t(Fmat)%*%Fmat)#
+}#
+#
+M(designs[1,],des_sp)#
+#
+EL <- function(design,x,des_sp) {#
+	fx<-c(1,x,x[1]*x[2],x[1]^2, x[2]^2)#
+	tmp <- try(solve(M(design,des_sp),fx),silent=TRUE)#
+	if(class(tmp)!="try-error") return(	t(fx)%*%tmp)#
+	else return(Inf)#
+}#
+#
+EL(designs[76,], c(0,0), des_sp)#
+Lmat <- matrix(nrow=nrow(designs),ncol=nrow(des_sp))#
+#
+for(i in 1:nrow(designs)) {#
+	for(j in 1:nrow(des_sp)) {#
+		Lmat[i,j] <- EL(designs[i,],des_sp[j,],des_sp)#
+	}#
+}#
+min(apply(Lmat,1,max))#
+bestdes <- which.min(apply(Lmat,1,max))#
+# optimal deterministic design - max exptected loss = 2.75#
+#
+library(lpSolveAPI)#
+#
+A <- t(Lmat)#
+my.lp2 <- make.lp( nrow=nrow(A), ncol=ncol(A) )#
+lp.control(my.lp2,sense="max")   # make it a maximization problem#
+for(i in 1:ncol(A)) set.column(my.lp2,i,A[,i])  #
+set.objfn(my.lp2, rep(1,ncol(A)))#
+set.constr.type(my.lp2,rep("<=",nrow(A)))#
+set.rhs(my.lp2, rep(1, nrow(A)))#
+solve(my.lp2)#
+get.objective(my.lp2)#
+optq <- get.variables(my.lp2)#
+optq <- optq/sum(optq)#
+max(optq%*%Lmat)
+optq%*%Lmat
+Lmat[bestdes,]
+?make.lp
+A
+L
+library(lpSolveAPI)#
+#
+A <- t(Lmat)#
+my.lp3 <- make.lp( nrow=nrow(A) + 1, ncol=ncol(A) )#
+lp.control(my.lp3,sense="max")   # make it a maximization problem#
+for(i in 1:nrow(A)) set.row(my.lp3,i,A[i,])  #
+set.row(my.lp3, nrow(A)+1, rep(1,ncol(A)))
+set.objfn(my.lp3, runif(ncol(A)) )
+library(lpSolveAPI)#
+#
+A <- t(Lmat)#
+my.lp3 <- make.lp( nrow=nrow(A) + 1, ncol=ncol(A) )#
+lp.control(my.lp3,sense="max")   # make it a maximization problem#
+for(i in 1:nrow(A)) set.row(my.lp3,i,A[i,])  #
+set.row(my.lp3, nrow(A)+1, rep(1,ncol(A)))#
+set.constr.type(my.lp3,rep("<=",nrow(A)+1))#
+#
+set.objfn(my.lp3, runif(ncol(A)) )#
+#
+set.rhs(my.lp3, c(Lmat[bestdes,], 1))#
+#
+solve(my.lp3)
+get.objective(my.lp2)
+get.objective(my.lp3)
+get.variables(my.lp3)
+library(lpSolveAPI)#
+#
+A <- t(Lmat)#
+my.lp3 <- make.lp( nrow=nrow(A) + 1, ncol=ncol(A) )#
+lp.control(my.lp3,sense="max")   # make it a maximization problem#
+for(i in 1:nrow(A)) set.row(my.lp3,i,A[i,])  #
+set.row(my.lp3, nrow(A)+1, rep(1,ncol(A)))#
+set.constr.type(my.lp3,rep("<=",nrow(A)+1))#
+set.objfn(my.lp3, rep(c(1,0), c(2,ncol(A)-2)) )#
+set.rhs(my.lp3, c(Lmat[bestdes,], 1))#
+solve(my.lp3)#
+#
+get.objective(my.lp3)#
+get.variables(my.lp3)
+library(lpSolveAPI)#
+#
+A <- t(Lmat)#
+my.lp3 <- make.lp( nrow=nrow(A) + 1, ncol=ncol(A) )#
+lp.control(my.lp3,sense="max")   # make it a maximization problem#
+for(i in 1:nrow(A)) set.row(my.lp3,i,A[i,])  #
+set.row(my.lp3, nrow(A)+1, rep(1,ncol(A)))#
+set.constr.type(my.lp3,c(rep("<=",nrow(A)),"="))#
+set.objfn(my.lp3, rep(c(1,0), c(2,ncol(A)-2)) )#
+set.rhs(my.lp3, c(Lmat[bestdes,], 1))#
+solve(my.lp3)
+get.objective(my.lp3)#
+get.variables(my.lp3)
+library(lpSolveAPI)#
+#
+A <- t(Lmat)#
+my.lp3 <- make.lp( nrow=nrow(A) + 1, ncol=ncol(A) )#
+lp.control(my.lp3,sense="max")   # make it a maximization problem#
+for(i in 1:nrow(A)) set.row(my.lp3,i,A[i,])  #
+set.row(my.lp3, nrow(A)+1, rep(1,ncol(A)))#
+set.constr.type(my.lp3,c(rep("<=",nrow(A)),"="))#
+set.objfn(my.lp3, rep(c(1,0), c(1,ncol(A)-1)) )#
+set.rhs(my.lp3, c(Lmat[bestdes,], 1))#
+solve(my.lp3)#
+#
+get.objective(my.lp3)#
+get.variables(my.lp3)
+optq
+which(optq>0)
+library(lpSolveAPI)#
+#
+A <- t(Lmat)#
+my.lp3 <- make.lp( nrow=nrow(A) + 1, ncol=ncol(A) )#
+lp.control(my.lp3,sense="max")   # make it a maximization problem#
+for(i in 1:nrow(A)) set.row(my.lp3,i,A[i,])  #
+set.row(my.lp3, nrow(A)+1, rep(1,ncol(A)))#
+set.constr.type(my.lp3,c(rep("<=",nrow(A)),"="))#
+#
+blah <- rep(0, ncol(A)); blah[28] <- 1#
+#
+set.objfn(my.lp3, blah)#
+set.rhs(my.lp3, c(Lmat[bestdes,], 1))#
+solve(my.lp3)#
+#
+get.objective(my.lp3)#
+get.variables(my.lp3)
+Lmat[8,]
+Lmat[28,]
+0.9 * Lmat[8,] + 0.1 *Lmat[28,]
+round(0.9 * Lmat[8,] + 0.1 *Lmat[28,], 2)
+round( Lmat[8,], 2)
+round(Lmat[28,], 2)
+round(0.9 * Lmat[8,] + 0.1 *Lmat[28,], 2)
+##
+#  Supporting material for "Minimax efficient random experimental designs with application to #
+#	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)#
+##
+#  Section 3: G-optimal random design examples#
+#  Two factor quadratic model - Section 3.1.3#
+#
+library(gmp)  # used to perform exact inversion of (fractional) information matrices -- reduces numerical error#
+#
+des_sp <- as.matrix(expand.grid(c(-1,0,1),c(-1,0,1)))#
+#
+designs <- t(combn(1:9, 6))#
+designs <- designs[-c( 1, 20, 24, 29, 43, 63, 69, 84),]  #exclude designs that later turn out to be singular#
+#
+# information matrix for a design defined by indices#
+M <- function(design,des_sp,frac=T) {#
+	Xmat <- des_sp[as.vector(design),]#
+	Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+	if (frac) Fmat <- as.bigq(Fmat)#
+	colnames(Fmat) <- NULL#
+	return(t(Fmat)%*%Fmat)#
+}#
+#
+M(designs[1,],des_sp)#
+#
+EL <- function(design,x,des_sp) {#
+	fx<-c(1,x,x[1]*x[2],x[1]^2, x[2]^2)#
+	tmp <- try(solve(M(design,des_sp)),silent=TRUE)#
+	if(class(tmp)!="try-error") return(	t(fx)%*%tmp%*%fx )#
+	else return(Inf)#
+}#
+#
+EL(designs[76,], c(0,0), des_sp)#
+EL(designs[8,], c(-1,-1), des_sp)#
+Lmat <- matrix(nrow=nrow(designs),ncol=nrow(des_sp))#
+#
+for(i in 1:nrow(designs)) {#
+	for(j in 1:nrow(des_sp)) {#
+		Lmat[i,j] <- as.numeric(EL(designs[i,],des_sp[j,],des_sp))#
+	}#
+}#
+min(apply(Lmat,1,max))#
+bestdes <- which.min(apply(Lmat,1,max))#
+# optimal deterministic design - max exptected loss = 2.75#
+#
+library(lpSolveAPI)#
+#
+A <- t(Lmat)#
+my.lp2 <- make.lp( nrow=nrow(A), ncol=ncol(A) )#
+lp.control(my.lp2,sense="max")   # make it a maximization problem#
+for(i in 1:ncol(A)) set.column(my.lp2,i,A[,i])  #
+set.objfn(my.lp2, rep(1,ncol(A)))#
+set.constr.type(my.lp2,rep("<=",nrow(A)))#
+set.rhs(my.lp2, rep(1, nrow(A)))#
+solve(my.lp2)#
+get.objective(my.lp2)#
+optq <- get.variables(my.lp2)#
+optq <- optq/sum(optq)#
+max(optq%*%Lmat)#
+# plot the random design strategy#
+#
+sptdes <- which(optq>0)#
+par(mfrow=c(3,3))#
+for(i in 1:length(sptdes)) {#
+	main <- substitute(pi(xi[i])==main,list(i=i,main=round(optq[sptdes[i]],4)))#
+	#main <- paste(round(optq[sptdes[i]],4))#
+	plot( des_sp[designs[sptdes[i],],] ,xlim=c(-1,1),ylim=c(-1,1),#
+		main=main,pch=19, xlab=expression(x[1]),ylab=expression(x[2]))#
+}#
+plot( des_sp[designs[bestdes,],] ,xlim=c(-1,1),ylim=c(-1,1), pch=19, main="best deterministic",xlab=expression(x[1]),ylab=expression(x[2]))
+Lmat[optq>0,]
+Lmat[optq>0,]
+get.objective(my.lp2)
+bestdes <- which.min(apply(Lmat,1,max))
+bestdes
+min(apply(Lmat,1,max))
+# worst-case loss distributions (survivor functions)#
+#
+loss.surv <- function(l,design.prob=optq,x.ind=1,s2=1) {#
+	ans <- 0#
+	for (i in 1:nrow(designs)) {#
+			x <- des_sp[x.ind,]#
+			f <- c(1,x,x[1]*x[2], x[1]^2, x[2]^2)#
+			#qform <- t(f)%*% solve(M(designs[i,],des_sp,frac=F)) %*% f   # 1x1 BigRational matrix#
+			predsd <- s2* (1+ t(f)%*% solve(M(designs[i,],des_sp,frac=F)) %*% f)#
+				# do not use exact fractional computation, slows things down too much here#
+			term <- pnorm(sqrt(l), mean=0, sd=predsd ) - pnorm(-sqrt(l),mean=0,sd=predsd)#
+			ans <- ans + design.prob[i] * (1-term)#
+	}#
+	return(ans)#
+}#
+loss.surv(1,optq,1,1)#
+#
+wc.loss.surv <- function(l,design.prob=optq,s2=1) {#
+	vals<- rep(NA,nrow(des_sp))#
+	for (i in 1:nrow(des_sp)) {#
+		vals[i] <- loss.surv(l,design.prob,i,s2)#
+	}#
+	max(vals)#
+ }#
+wc.loss.surv(1.3) #
+# plotting grid#
+lgrid <- exp(seq(from=log(0.01),to=log(70),length=100))#
+#
+#loss distribution for optimal random strategy #
+formals(wc.loss.surv)$design.prob = optq#
+opt.rds.loss.surv <- sapply(lgrid, Vectorize(wc.loss.surv))
+delta <- function(i) { out <- rep(0,length=nrow(designs)); out[i] <-1; return(out) } #
+delta8 <- delta(8)
+# loss distribution for minimax deterministic#
+formals(wc.loss.surv)$design.prob= delta(8)#
+mm.det.loss.surv <- sapply(lgrid, Vectorize(wc.loss.surv))
+plot(sqrt(lgrid), opt.rds.loss.surv, type="l", main="", ylab="", xlab=expression(u/bar(sigma)^2) ,lwd=4) # ylab="S(theta0, pi, u) - tight upper bound"#
+lines(sqrt(lgrid),mm.det.loss.surv, type="l",col="grey",lwd=4)#
+# legend("topright", legend=c(expression(xi[mM]), expression(pi[mM])),lwd=4, lty=c(1,1), col=c("grey",1))
+##
+#  Supporting material for "Minimax efficient random experimental designs with application to #
+#	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)#
+##
+#  Section 3: G-optimal random design examples#
+#  Two factor quadratic model - Section 3.1.3#
+#
+library(gmp)  # used to perform exact inversion of (fractional) information matrices -- reduces numerical error#
+#
+des_sp <- as.matrix(expand.grid(c(-1,0,1),c(-1,0,1)))#
+#
+designs <- t(combn(1:9, 6))#
+designs <- designs[-c( 1, 20, 24, 29, 43, 63, 69, 84),]  #exclude designs that later turn out to be singular#
+#
+# information matrix for a design defined by indices#
+M <- function(design,des_sp,frac=T) {#
+	Xmat <- des_sp[as.vector(design),]#
+	Fmat <- as.matrix( cbind(1, Xmat, Xmat[,1]*Xmat[,2], Xmat[,1]^2, Xmat[,2]^2) )#
+	if (frac) Fmat <- as.bigq(Fmat)#
+	colnames(Fmat) <- NULL#
+	return(t(Fmat)%*%Fmat)#
+}#
+#
+M(designs[1,],des_sp)#
+#
+EL <- function(design,x,des_sp) {#
+	fx<-c(1,x,x[1]*x[2],x[1]^2, x[2]^2)#
+	tmp <- try(solve(M(design,des_sp)),silent=TRUE)#
+	if(class(tmp)!="try-error") return(	t(fx)%*%tmp%*%fx )#
+	else return(Inf)#
+}#
+#
+EL(designs[76,], c(0,0), des_sp)#
+EL(designs[8,], c(-1,-1), des_sp)#
+Lmat <- matrix(nrow=nrow(designs),ncol=nrow(des_sp))#
+#
+for(i in 1:nrow(designs)) {#
+	for(j in 1:nrow(des_sp)) {#
+		Lmat[i,j] <- as.numeric(EL(designs[i,],des_sp[j,],des_sp))#
+	}#
+}#
+min(apply(Lmat,1,max))#
+bestdes <- which.min(apply(Lmat,1,max))#
+# optimal deterministic design - max exptected loss = 2.75#
+#
+library(lpSolveAPI)#
+#
+A <- t(Lmat)#
+my.lp2 <- make.lp( nrow=nrow(A), ncol=ncol(A) )#
+lp.control(my.lp2,sense="max")   # make it a maximization problem#
+for(i in 1:ncol(A)) set.column(my.lp2,i,A[,i])  #
+set.objfn(my.lp2, rep(1,ncol(A)))#
+set.constr.type(my.lp2,rep("<=",nrow(A)))#
+set.rhs(my.lp2, rep(1, nrow(A)))#
+solve(my.lp2)#
+get.objective(my.lp2)#
+optq <- get.variables(my.lp2)#
+optq <- optq/sum(optq)#
+max(optq%*%Lmat)#
+# plot the random design strategy#
+#
+sptdes <- which(optq>0)#
+par(mfrow=c(3,3))#
+for(i in 1:length(sptdes)) {#
+	main <- substitute(pi(xi[i])==main,list(i=i,main=round(optq[sptdes[i]],4)))#
+	#main <- paste(round(optq[sptdes[i]],4))#
+	plot( des_sp[designs[sptdes[i],],] ,xlim=c(-1,1),ylim=c(-1,1),#
+		main=main,pch=19, xlab=expression(x[1]),ylab=expression(x[2]))#
+}#
+plot( des_sp[designs[bestdes,],] ,xlim=c(-1,1),ylim=c(-1,1), pch=19, main="best deterministic",xlab=expression(x[1]),ylab=expression(x[2]))#
+Lmat[optq>0,]#
+# model: full quadratic in 2 factors: p=6, n=6 i.e. smallest possible number of runs#
+# #
+# optimal deterministic design - max expected loss = 2.75#
+# optimal randomized design contains 8 support designs (with odd looking weights)#
+# max expected loss is 1.55#
+#
+##
+#  Bounds on loss distribution survivor function#
+##
+#
+loss.surv <- function(l,design.prob=optq,x.ind=1,s2=1) {#
+	ans <- 0#
+	for (i in 1:nrow(designs)) {#
+			x <- des_sp[x.ind,]#
+			f <- c(1,x,x[1]*x[2], x[1]^2, x[2]^2)#
+			#qform <- t(f)%*% solve(M(designs[i,],des_sp,frac=F)) %*% f   # 1x1 BigRational matrix#
+			predsd <- s2* (1+ t(f)%*% solve(M(designs[i,],des_sp,frac=F)) %*% f)#
+				# do not use exact fractional computation, slows things down too much here#
+			term <- pnorm(sqrt(l), mean=0, sd=predsd ) - pnorm(-sqrt(l),mean=0,sd=predsd)#
+			ans <- ans + design.prob[i] * (1-term)#
+	}#
+	return(ans)#
+}#
+loss.surv(1,optq,1,1)#
+#
+wc.loss.surv <- function(l,design.prob=optq,s2=1) {#
+	vals<- rep(NA,nrow(des_sp))#
+	for (i in 1:nrow(des_sp)) {#
+		vals[i] <- loss.surv(l,design.prob,i,s2)#
+	}#
+	max(vals)#
+ }#
+wc.loss.surv(1.3) #
+# plotting grid#
+lgrid <- exp(seq(from=log(0.01),to=log(70),length=100))#
+#
+#loss distribution for optimal random strategy #
+formals(wc.loss.surv)$design.prob = optq#
+opt.rds.loss.surv <- sapply(lgrid, Vectorize(wc.loss.surv))#
+#
+delta <- function(i) { out <- rep(0,length=nrow(designs)); out[i] <-1; return(out) } #
+delta8 <- delta(8)#
+#
+# loss distribution for minimax deterministic#
+formals(wc.loss.surv)$design.prob= delta(8)#
+mm.det.loss.surv <- sapply(lgrid, Vectorize(wc.loss.surv))#
+#
+plot(sqrt(lgrid), opt.rds.loss.surv, type="l", main="", ylab="", xlab=expression(u/bar(sigma)^2) ,lwd=4) # ylab="S(theta0, pi, u) - tight upper bound"#
+lines(sqrt(lgrid),mm.det.loss.surv, type="l",col="grey",lwd=4)
+par(mfrow=c(1,1))#
+plot(sqrt(lgrid), opt.rds.loss.surv, type="l", main="", ylab="", xlab=expression(u/bar(sigma)^2) ,lwd=4) # ylab="S(theta0, pi, u) - tight upper bound"#
+lines(sqrt(lgrid),mm.det.loss.surv, type="l",col="grey",lwd=4)

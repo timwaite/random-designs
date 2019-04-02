@@ -2,8 +2,8 @@
 #  Supporting material for "Minimax efficient random experimental designs with application to 
 #	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)
 
-# Section 4: Model-robust designs
-## Section 4.3.2, first example: 4 points, 2 factors, first-order model
+# Section 5: Model-robust designs
+## Section 5.3.2, first example: 4 points, 2 factors, first-order model
 
 source("obj-funs.R")
 source("coord-descent.R")

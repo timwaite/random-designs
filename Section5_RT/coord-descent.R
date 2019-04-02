@@ -2,7 +2,7 @@
 #  Supporting material for "Minimax efficient random experimental designs, with application to 
 #	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)
 
-# Co-ordinate descent algorithm used for Section 4 - model-robust designs
+# Co-ordinate descent algorithm used for Section 5 - model-robust designs
 
 coord.descent <- function(par, objfun, lower=rep(-1,length(par)), upper=rep(1,length(par)), tol=0.0001, pass.max=100, verbose=T,...) {
   
