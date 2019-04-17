@@ -34,6 +34,7 @@ Psi.crrod <- function(design) {
 Psi.crrod(des)
  
 # maximum risk for a deterministic design
+# computed using class Theta2; otherwise this is a lower bound for the maximum 
 
 Psi.det <- function(design) {
 	Xmat <- design
@@ -44,14 +45,10 @@ Psi.det <- function(design) {
 	M <- t(Fmat)%*%Fmat
 	Minv <- try(solve(M), silent=T)
 	
-	zeta.grid <- expand.grid( rep(list(c(-1,1)), n ) )
-	zeta.grid <- as.matrix(zeta.grid)
-	
-	if (class(Minv)!="try-error") {
+		if (class(Minv)!="try-error") {
 		S <- t(diag(1, p +1 , p+1)[,-1])
-		tmp <- S%*% Minv %*% t(Fmat) %*% t(zeta.grid)
-		tmp2 <- apply(tmp,2, function(x) { sum(x^2) })
-		return((n-1)* max(tmp2))
+		Amat <- (t(S)%*%S %*% Minv)
+		return( n * max(eigen(Amat)$values)  )		
 		} else return(Inf)	
 	
 }
@@ -149,7 +146,7 @@ while (!stop) {
     stop <- TRUE
   }
 }
-# efficiency of CRROD relative to best deterministic is 1.0%
+# efficiency of CRROD relative to best deterministic is 24.9%
 Psi.crrod(crrod$best.des) / Psi.crrod( bad.des ); 
  
 # order the design points lexicographically for pretty printing
@@ -167,7 +164,7 @@ xtable( cbind( lex_sort(crrod$best.design), NA,
 
 lmax.ASunran <- Psi.det(crrod$best.design)
 survbound.ASunran <- function(u) { return( u <= lmax.ASunran ) }
-plot( survbound.ASunran, from=0, to= 10 ,ylab="", ylim=c(0,1) ,xlab=expression(u/s^2), n=1000, lwd=4, col="grey")
+plot( survbound.ASunran, from=0, to= 10 ,ylab="", ylim=c(0,1) ,xlab=expression(u/sigma^2), n=1000, lwd=4, col="grey")
 
 # randomized AS-optimal 
 
