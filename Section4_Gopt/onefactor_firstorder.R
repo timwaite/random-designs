@@ -1,10 +1,10 @@
 #
 #  Supporting material for "Minimax efficient random experimental designs with application to 
-#	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)
-#
-# 
+#	model-robust design for prediction"
+# by Waite, T.W. and Woods, D.C. (2020)
+
 #  Section 4: G-optimal random design examples
-#  One factor first-order model - Section 4.1.1
+#  One factor first-order model - Section 4.1.2
 
 # completely enumerate all possible three point designs over X= {-1,0,1}
 

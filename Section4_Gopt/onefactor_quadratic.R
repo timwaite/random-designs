@@ -1,9 +1,10 @@
 #
 #  Supporting material for "Minimax efficient random experimental designs with application to 
-#	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)
-#
+#	model-robust design for prediction" 
+# by Waite, T.W. and Woods, D.C. (2020)
+
 #  Section 4: G-optimal random design examples
-#  One factor quadratic model - Section 4.1.2
+#  One factor quadratic model - Section 4.1.3
 
 
 designs <- expand.grid(c(-1,0,1),c(-1,0,1),c(-1,0,1),c(-1,0,1))		

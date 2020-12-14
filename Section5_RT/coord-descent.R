@@ -1,6 +1,7 @@
 #
 #  Supporting material for "Minimax efficient random experimental designs, with application to 
-#	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)
+#	model-robust design for prediction"  
+# by Waite, T.W and Woods, D.C. (2020)
 
 # Co-ordinate descent algorithm used for Section 5 - model-robust designs
 

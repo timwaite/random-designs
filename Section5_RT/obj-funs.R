@@ -1,6 +1,7 @@
 #
 #  Supporting material for "Minimax efficient random experimental designs, with application to 
-#	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)
+#	model-robust design for prediction"  
+# by Waite, T.W and Woods, D.C. (2020)
 
 #
 #  Section 5 - model-robust designs
@@ -79,18 +80,3 @@ Psi.approx.wrap <- function(x, n, q, Tmc, f, A, sigma2.UB, Tmax, tau2, transform
   des1 <- design.raw(x,n,q, transform.delta)
   Psi.approx(des1$xi.bar, des1$delta, Tmc, f, A, sigma2.UB, Tmax, tau2)
 }
-
-# design.rawOLD <- function(x, n, q, transform.delta=T ) {
-#   N <- length(x)
-#   if (N!= n*q+1) stop("Incorrect dimensions")
-#   xi.bar <- matrix(x[-N], nrow=n, ncol=q, byrow=F)
-#   delta.max <- min( dist(xi.bar,method="maximum"), 2*abs(xi.bar-1), 2*abs(xi.bar+1)  )
-#   if (transform.delta) {	delta <- x[N] * delta.max } else {delta <- x[N]}
-#   list(xi.bar = xi.bar, delta=delta, delta.max=delta.max)
-# }
-# 
-# Psi.approx.wrapOLD <- function(x, n, q, Tmc, f, A, sigma2.UB, Tmax, tau2, transform.delta=T) {
-#   des1 <- design.raw(x,n,q, transform.delta)
-#   Psi.approx(des1$xi.bar, des1$delta, Tmc, f, A, sigma2.UB, Tmax, tau2)
-# }
- 

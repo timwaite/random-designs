@@ -1,7 +1,8 @@
 #
 #  Supporting material for "Minimax efficient random experimental designs, with application to 
-#	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)
-#
+#	model-robust design for prediction"  
+#  by Waite, T.W. and Woods, D.C. (2020)
+
 #	Computations for Section 3 - Potential outcomes designs 
 #   - three factors, 20 runs, full quadratic model, factors take levels -1,0,1
 #   - use (discrete) co-ordinate exchange to optimize designs
@@ -14,9 +15,9 @@ f <- function(x) { c(1, x[1], x[2], x[3],
                      x[1]*x[2], x[2]*x[3], x[1]*x[3], 
                      x[1]^2, x[2]^2, x[3]^2  ) }
 
-# A_S objective function
+# L objective function
 
-Psi.crrod <- function(design) {
+Psi.crd <- function(design) {
 	Xmat <- design
 	Fmat <- t(apply(Xmat,1,f))
 	p <- ncol(Fmat) -1 
@@ -30,8 +31,7 @@ Psi.crrod <- function(design) {
 		} else return(Inf)	
 }
 
-#debugonce(AS_objfun)
-Psi.crrod(des)
+Psi.crd(des)
  
 # maximum risk for a deterministic design
 # computed using class Theta2; otherwise this is a lower bound for the maximum 
@@ -83,14 +83,6 @@ coord.exchange <- function(init_des, objfun = AS_objfun, tol=1e-6, verbose=F) {
             }
           }
          }
-        # #commented code: continuous version
-        # of1d <- Vectorize( function(x) { tmp_des <- cur_des; tmp_des[i,j] <- x; objfun(tmp_des) } )
-        # a <- optimize(of1d, interval=c(-1,1))
-        # if ( a$objective / of_best   <  1 - tol) { 
-          # cur_des[i,j] <- a$minimum
-          # of_best <- a$objective;
-          # stop <- FALSE;
-        # }
       }
     }
     if (verbose) cat("Pass " , itno,  " Obj fun ", of_best, "\n")
@@ -105,7 +97,6 @@ coord.exchange.multistart <- function( random.starts = 1000, objfun = AS_objfun)
 	of_best <- Inf	
 	of_vals <- rep(NA,random.starts)
 	for (k in 1:random.starts) {
-		# revise: take more care to generate nonsingular starting design
 		init  <- matrix(sample(c(-1,0,1), 20*3, replace=T), nrow=20, ncol=3)
 		this.start.des <- coord.exchange(init, objfun=objfun)
 		ofval <- objfun(this.start.des)
@@ -118,61 +109,61 @@ coord.exchange.multistart <- function( random.starts = 1000, objfun = AS_objfun)
 	return(list(best.design=best.des,objfun.vals=of_vals))
 }
 
-crrod <- coord.exchange.multistart(random.starts=1000, objfun=Psi.crrod)
-plot(crrod$objfun.vals)
+crd <- coord.exchange.multistart(random.starts=1000, objfun=Psi.crd)
+plot(crd$objfun.vals)
 
 
 tr <- function(A) sum(diag(A))
 
 # Max risk for minimax random design strategy
 
-( Psi.crrod(crrod$best.design) )
+( Psi.crd(crd$best.design) )
 
 
-# The max risk efficiency of the unrandomized  AS-optimal design
-#  compared to the randomized AS-optimal design is  1.7%
-Psi.crrod(crrod$best.design) / Psi.det(crrod$best.design)
+# The max risk efficiency of the unrandomized  L-optimal design
+#  compared to the randomized L-optimal design is  1.7%
+Psi.crd(crd$best.design) / Psi.det(crd$best.design)
 
 # It is not enough to randomize the run order of a poor choice of treatments.
-# To demonstrate this, the code below finds a CRROD which has an MR-efficiency of 
+# To demonstrate this, the code below finds a crd which has an MR-efficiency of 
 # less than 1% relative to the best deterministic design.
 #
 stop <- F
-tmp <- Psi.crrod(crrod$best.design)
+tmp <- Psi.crd(crd$best.design)
 while (!stop) {
   bad.des <- matrix( sample(c(-1,0,1), 3*20, replace=T), ncol=3, nrow=20)
-  ofval <- Psi.crrod( bad.des )
+  ofval <- Psi.crd( bad.des )
    if ( ofval > 100*tmp  & ofval < Inf) {
     stop <- TRUE
   }
 }
-# efficiency of CRROD relative to best deterministic is 24.9%
-Psi.crrod(crrod$best.des) / Psi.crrod( bad.des ); 
+# efficiency of CRD relative to best deterministic is 24.9%
+Psi.crd(crd$best.des) / Psi.crd( bad.des ); 
  
 # order the design points lexicographically for pretty printing
 library(kdtools)
  
 
 library( xtable )
-xtable( cbind( lex_sort(crrod$best.design), NA, 
+xtable( cbind( lex_sort(crd$best.design), NA, 
 		lex_sort(bad.des)), digits=0) 
-#save(deterministic,crrod, bad.des , file="CRROD_new.Rdata")
+#save(deterministic,crd, bad.des , file="crd_new.Rdata")
 
 # survivor function upper bounds (Figure 1 in the paper, left panel)
 
-# unrandomized AS-optimal
+# unrandomized L-optimal
 
-lmax.ASunran <- Psi.det(crrod$best.design)
-survbound.ASunran <- function(u) { return( u <= lmax.ASunran ) }
-plot( survbound.ASunran, from=0, to= 10 ,ylab="", ylim=c(0,1) ,xlab=expression(u/sigma^2), n=1000, lwd=4, col="grey")
+lmax.Lunran <- Psi.det(crd$best.design)
+survbound.Lunran <- function(u) { return( u <= lmax.Lunran ) }
+plot( survbound.Lunran, from=0, to= 10 ,ylab="", ylim=c(0,1) ,xlab=expression(u/sigma^2), n=1000, lwd=4, col="grey")
 
-# randomized AS-optimal 
+# randomized L-optimal 
 
-tmp2 <- Psi.crrod(crrod$best.design)
-n <- nrow(crrod$best.design)
+tmp2 <- Psi.crd(crd$best.design)
+n <- nrow(crd$best.design)
 
-survbound.mMcrrod <- Vectorize( function(u) { min(1,  tmp2/u * ( u <= lmax.ASunran ) ) } )
-curve( survbound.mMcrrod , from=1e-6, to=10, n=1000, add=TRUE ,lwd=4, lty=2)
+survbound.mMcrd <- Vectorize( function(u) { min(1,  tmp2/u * ( u <= lmax.Lunran ) ) } )
+curve( survbound.mMcrd , from=1e-6, to=10, n=1000, add=TRUE ,lwd=4, lty=2)
 
 
 

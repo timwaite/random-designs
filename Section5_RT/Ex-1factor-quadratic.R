@@ -1,6 +1,6 @@
 #
 #  Supporting material for "Minimax efficient random experimental designs with application to 
-#	model-robust design for prediction" by T.W. Waite and D.C. Woods (2019)
+#	model-robust design for prediction"  
 
 # Section 5: Model-robust designs
 ## Section 5.3.2, first example: 3 points, 1 factors, quadratic model
